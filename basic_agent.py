@@ -112,19 +112,22 @@ def k_means_recolor(clusters, colors):
             recolored_data[c][r] = get_nearest
 
     # create image from array
-    img_rgb = Image.fromarray(recolored_data)
-    img_rgb.save('shiba_recolored.png')
-    img_rgb.show()
+    img_recolored = Image.fromarray(recolored_data)
+    img_recolored.save('shiba_recolored.png')
+    img_recolored.show()
     
 
 rgb_data = get_rgb_data()
 gray_data = get_grayscale_data()
 clusters, centers = k_means(rgb_data)
+
+# convert dict to list
 centers_list = []
 for key, value in centers.items():
     temp = value
     centers_list.append(temp)
 print(centers_list)
+
 k_means_recolor(clusters, centers_list)
 # k_means_recolor(clusters, centers)
 
