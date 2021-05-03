@@ -1,0 +1,11 @@
+shiba_big_result
+k = 9
+distance <= 77
+
+best settings
+k = 5
+distance <= 70
+
+Todo:
+-pick distinct colors for kmeans
+-get accuracy score
