@@ -2,9 +2,9 @@ import numpy as np
 import pandas as pd
 import math
 import random
+import threading
 from collections import Counter
 from PIL import Image
-from sklearn.metrics import mean_squared_error
 
 # images
 img = Image.open('shiba_big.jpg')
@@ -223,55 +223,142 @@ def get_six_patches(data, width, height, test_patch, recolored_data):
     return similar_patches, majority
 
 
-rgb_data = get_rgb_data()
-gray_data = get_grayscale_data()
-clusters, centers = k_means(rgb_data)
+def basic_agent():
+    rgb_data = get_rgb_data()
+    gray_data = get_grayscale_data()
+    clusters, centers = k_means(rgb_data)
 
-# convert dict to list
-centers_list = []
-for key, value in centers.items():
-    temp = value
-    centers_list.append(temp)
-print("centers: ", centers_list)
+    # convert dict to list
+    centers_list = []
+    for key, value in centers.items():
+        temp = value
+        centers_list.append(temp)
+    print("centers: ", centers_list)
 
-recolored_data = k_means_recolor(clusters, centers_list)
+    recolored_data = k_means_recolor(clusters, centers_list)
 
-# split img to train and test
-split_width = img_width // 2
+    # split img to train and test
+    split_width = img_width // 2
 
-train_gray = gray_data[:, :split_width]
-train_recolored = recolored_data[:, :split_width]
+    train_gray = gray_data[:, :split_width]
+    train_recolored = recolored_data[:, :split_width]
 
-test_gray = gray_data[:, split_width:]
-test_recolored = recolored_data[:, split_width:]
+    test_gray = gray_data[:, split_width:]
+    test_recolored = recolored_data[:, split_width:]
 
-result = np.zeros((img_height, split_width), dtype=(np.uint8,3))
+    result = np.zeros((img_height, split_width), dtype=(np.uint8,3))
 
-# to_image = Image.fromarray(train_recolored)
-# print(list(train_recolored)[0][1])
+    # to_image = Image.fromarray(train_recolored)
+    # print(list(train_recolored)[0][1])
 
-# select a color for the middle pixel of patch
-# iterate through test data (right half of gray image)
-for r in range(img_width // 2):
-    for c in range(img_height):
-        # ignore edges
-        if r == 0 or c == 0 or r == split_width-1 or c == img_height-1:
-            continue
-        middle = test_gray[c][r]
-        # assemble the 3x3 patch, middle pixel will always be first
-        patch = []
-        patch.append(middle)
-        patch.extend(get_adjacent(test_gray, r, c, split_width, img_height))
-        # get six most similar 3x3 grayscale pixel patches in training data (left half of gray image)
-        six_patches, majority = get_six_patches(train_gray, split_width, img_height, patch, train_recolored)
-        # print("six patches: ", six_patches)
+    # select a color for the middle pixel of patch
+    # iterate through test data (right half of gray image)
+    for r in range(img_width // 2):
+        for c in range(img_height):
+            # ignore edges
+            if r == 0 or c == 0 or r == split_width-1 or c == img_height-1:
+                continue
+            middle = test_gray[c][r]
+            # assemble the 3x3 patch, middle pixel will always be first
+            patch = []
+            patch.append(middle)
+            patch.extend(get_adjacent(test_gray, r, c, split_width, img_height))
+            # get six most similar 3x3 grayscale pixel patches in training data (left half of gray image)
+            six_patches, majority = get_six_patches(train_gray, split_width, img_height, patch, train_recolored)
+            # print("six patches: ", six_patches)
 
-        # recolor middle pixel from test gray
-        result[c][r] = majority
+            # recolor middle pixel from test gray
+            result[c][r] = majority
+
+    return train_recolored, result
+
+def basic_agent_threaded():
+
+    rgb_data = get_rgb_data()
+    gray_data = get_grayscale_data()
+    clusters, centers = k_means(rgb_data)
+
+    # convert dict to list
+    centers_list = []
+    for key, value in centers.items():
+        temp = value
+        centers_list.append(temp)
+    print("centers: ", centers_list)
+
+    recolored_data = k_means_recolor(clusters, centers_list)
+
+    # split img to train and test
+    split_width = img_width // 2
+
+    train_gray = gray_data[:, :split_width]
+    train_recolored = recolored_data[:, :split_width]
+
+    test_gray = gray_data[:, split_width:]
+    test_recolored = recolored_data[:, split_width:]
+
+    result = np.zeros((img_height, split_width), dtype=(np.uint8,3))
+    result1 = np.zeros((img_height/3, split_width), dtype=(np.uint8, 3))
+    result2 = np.zeros((img_height/3, split_width), dtype=(np.uint8, 3))
+    result3 = np.zeros((img_height/3, split_width), dtype=(np.uint8, 3))
+
+    thread1 = threading.Thread(target=basic_agent_thread_action, args=(result1, 1, img_height, img_width, test_gray, train_gray))
+    thread2 = threading.Thread(target=basic_agent_thread_action, args=(result2, 2, img_height, img_width, test_gray, train_gray))
+    thread3 = threading.Thread(target=basic_agent_thread_action, args=(result3, 3, img_height, img_width, test_gray, train_gray))
+
+    thread1.start()
+    thread2.start()
+    thread3.start()
+
+    thread1.join()
+    thread2.join()
+    thread3.join()
+
+    result1 = np.concatenate((result1, result2), axis=None)
+    result1 = np.concatenate((result1, result3), axis=None)
+
+    return train_recolored, result1
+
+def basic_agent_thread_action(resArray, section, length, width, testG, trainG):
+    split_width = width // 2
+    first_horizontal_border = length/3
+    second_horizontal_border = (length/3) * 2
+    start = 0
+    end = 0
+    if section == 1:
+        end = first_horizontal_border-1
+    elif section == 2:
+        start = first_horizontal_border
+        end = second_horizontal_border-1
+    else:
+        start = second_horizontal_border
+        end = length
+
+    # select a color for the middle pixel of patch
+    # iterate through test data (right half of gray image)
+    for r in range(width // 2):
+        for c in range(start, img_height):
+            # ignore edges
+            if r == 0 or c == 0 or r == split_width-1 or c == img_height-1:
+                continue
+            middle = testG[c][r]
+            # assemble the 3x3 patch, middle pixel will always be first
+            patch = []
+            patch.append(middle)
+            patch.extend(get_adjacent(testG, r, c, split_width, img_height))
+            # get six most similar 3x3 grayscale pixel patches in training data (left half of gray image)
+            six_patches, majority = get_six_patches(trainG, split_width, img_height, patch, train_recolored)
+            # print("six patches: ", six_patches)
+
+            # recolor middle pixel from test gray
+            resArray[c][r] = majority
+
+
 
 # accuracy
 # score = mean_squared_error(test_recolored.tolist(), result.tolist())
 # print("mean_squared_error: ", score)
+
+train_recolored, result = basic_agent()
 
 combine = np.concatenate((train_recolored, result), axis=1)
 
