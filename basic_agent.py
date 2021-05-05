@@ -297,13 +297,13 @@ def basic_agent_threaded():
     test_recolored = recolored_data[:, split_width:]
 
     result = np.zeros((img_height, split_width), dtype=(np.uint8,3))
-    result1 = np.zeros((img_height/3, split_width), dtype=(np.uint8, 3))
-    result2 = np.zeros((img_height/3, split_width), dtype=(np.uint8, 3))
-    result3 = np.zeros((img_height/3, split_width), dtype=(np.uint8, 3))
+    result1 = np.zeros((math.ceil(img_height/3), split_width), dtype=(np.uint8, 3))
+    result2 = np.zeros((math.ceil(img_height/3), split_width), dtype=(np.uint8, 3))
+    result3 = np.zeros((math.ceil(img_height/3), split_width), dtype=(np.uint8, 3))
 
-    thread1 = threading.Thread(target=basic_agent_thread_action, args=(result1, 1, img_height, img_width, test_gray, train_gray))
-    thread2 = threading.Thread(target=basic_agent_thread_action, args=(result2, 2, img_height, img_width, test_gray, train_gray))
-    thread3 = threading.Thread(target=basic_agent_thread_action, args=(result3, 3, img_height, img_width, test_gray, train_gray))
+    thread1 = threading.Thread(target=basic_agent_thread_action, args=(result, 1, img_height, img_width, test_gray, train_gray, train_recolored))
+    thread2 = threading.Thread(target=basic_agent_thread_action, args=(result, 2, img_height, img_width, test_gray, train_gray, train_recolored))
+    thread3 = threading.Thread(target=basic_agent_thread_action, args=(result, 3, img_height, img_width, test_gray, train_gray, train_recolored))
 
     thread1.start()
     thread2.start()
@@ -313,25 +313,28 @@ def basic_agent_threaded():
     thread2.join()
     thread3.join()
 
-    result1 = np.concatenate((result1, result2), axis=None)
-    result1 = np.concatenate((result1, result3), axis=None)
+    # result1 = np.concatenate((result1, result2), axis=None)
+    # result1 = np.concatenate((result1, result3), axis=None)
 
-    return train_recolored, result1
+    return train_recolored, result
 
-def basic_agent_thread_action(resArray, section, length, width, testG, trainG):
+def basic_agent_thread_action(resArray, section, length, width, testG, trainG, trainRec):
     split_width = width // 2
-    first_horizontal_border = length/3
-    second_horizontal_border = (length/3) * 2
+    first_horizontal_border = math.floor(length/3)
+    second_horizontal_border = first_horizontal_border * 2
     start = 0
     end = 0
     if section == 1:
         end = first_horizontal_border-1
+        print(str(start) + " " + str(end))
     elif section == 2:
         start = first_horizontal_border
         end = second_horizontal_border-1
+        print(str(start) + " " + str(end))
     else:
         start = second_horizontal_border
         end = length
+        print(str(start) + " " + str(end))
 
     # select a color for the middle pixel of patch
     # iterate through test data (right half of gray image)
@@ -346,7 +349,7 @@ def basic_agent_thread_action(resArray, section, length, width, testG, trainG):
             patch.append(middle)
             patch.extend(get_adjacent(testG, r, c, split_width, img_height))
             # get six most similar 3x3 grayscale pixel patches in training data (left half of gray image)
-            six_patches, majority = get_six_patches(trainG, split_width, img_height, patch, train_recolored)
+            six_patches, majority = get_six_patches(trainG, split_width, img_height, patch, trainRec)
             # print("six patches: ", six_patches)
 
             # recolor middle pixel from test gray
@@ -358,7 +361,7 @@ def basic_agent_thread_action(resArray, section, length, width, testG, trainG):
 # score = mean_squared_error(test_recolored.tolist(), result.tolist())
 # print("mean_squared_error: ", score)
 
-train_recolored, result = basic_agent()
+train_recolored, result = basic_agent_threaded()
 
 combine = np.concatenate((train_recolored, result), axis=1)
 
