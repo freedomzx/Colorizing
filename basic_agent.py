@@ -297,21 +297,27 @@ def basic_agent_threaded():
     test_recolored = recolored_data[:, split_width:]
 
     result = np.zeros((img_height, split_width), dtype=(np.uint8,3))
-    result1 = np.zeros((math.ceil(img_height/3), split_width), dtype=(np.uint8, 3))
-    result2 = np.zeros((math.ceil(img_height/3), split_width), dtype=(np.uint8, 3))
-    result3 = np.zeros((math.ceil(img_height/3), split_width), dtype=(np.uint8, 3))
 
     thread1 = threading.Thread(target=basic_agent_thread_action, args=(result, 1, img_height, img_width, test_gray, train_gray, train_recolored))
     thread2 = threading.Thread(target=basic_agent_thread_action, args=(result, 2, img_height, img_width, test_gray, train_gray, train_recolored))
     thread3 = threading.Thread(target=basic_agent_thread_action, args=(result, 3, img_height, img_width, test_gray, train_gray, train_recolored))
+    thread4 = threading.Thread(target=basic_agent_thread_action, args=(result, 4, img_height, img_width, test_gray, train_gray, train_recolored))
+    thread5 = threading.Thread(target=basic_agent_thread_action, args=(result, 5, img_height, img_width, test_gray, train_gray, train_recolored))
+    thread6 = threading.Thread(target=basic_agent_thread_action, args=(result, 6, img_height, img_width, test_gray, train_gray, train_recolored))
 
     thread1.start()
     thread2.start()
     thread3.start()
+    thread4.start()
+    thread5.start()
+    thread6.start()
 
     thread1.join()
     thread2.join()
     thread3.join()
+    thread4.join()
+    thread5.join()
+    thread6.join()
 
     # result1 = np.concatenate((result1, result2), axis=None)
     # result1 = np.concatenate((result1, result3), axis=None)
@@ -320,26 +326,56 @@ def basic_agent_threaded():
 
 def basic_agent_thread_action(resArray, section, length, width, testG, trainG, trainRec):
     split_width = width // 2
+    split_width_half = split_width // 2
     first_horizontal_border = math.floor(length/3)
     second_horizontal_border = first_horizontal_border * 2
     start = 0
     end = 0
+    vertical_start = 0
+    vertical_end = 0
     if section == 1:
-        end = first_horizontal_border-1
+        end = first_horizontal_border
         print(str(start) + " " + str(end))
+        vertical_end = split_width_half
+        print(str(vertical_start) + " " + str(vertical_end))
     elif section == 2:
         start = first_horizontal_border
-        end = second_horizontal_border-1
+        end = second_horizontal_border
         print(str(start) + " " + str(end))
+        vertical_end = split_width_half
+        print(str(vertical_start) + " " + str(vertical_end))
+    elif section == 3:
+        start = second_horizontal_border
+        end = length
+        print(str(start) + " " + str(end))
+        vertical_end = split_width_half
+        print(str(vertical_start) + " " + str(vertical_end))
+    elif section == 4:
+        end = first_horizontal_border
+        print(str(start) + " " + str(end))
+        vertical_start = split_width_half
+        vertical_end = split_width
+        print(str(vertical_start) + " " + str(vertical_end))
+    elif section == 5:
+        start = first_horizontal_border
+        end = second_horizontal_border
+        print(str(start) + " " + str(end))
+        vertical_start = split_width_half
+        vertical_end = split_width
+        print(str(vertical_start) + " " + str(vertical_end))
     else:
         start = second_horizontal_border
         end = length
         print(str(start) + " " + str(end))
+        vertical_start = split_width_half
+        vertical_end = split_width
+        print(str(vertical_start) + " " + str(vertical_end))
+
 
     # select a color for the middle pixel of patch
     # iterate through test data (right half of gray image)
-    for r in range(width // 2):
-        for c in range(start, img_height):
+    for r in range(vertical_start, vertical_end):
+        for c in range(start, end):
             # ignore edges
             if r == 0 or c == 0 or r == split_width-1 or c == img_height-1:
                 continue
