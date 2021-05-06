@@ -42,44 +42,46 @@ def get_grayscale_data():
 # 1. Activation function that transform linear inputs to nonlinear outputs.
 # 2. Bound output to between 0 and 1 so that it can be interpreted as a probability.
 # 3. Make computation easier than arbitrary activation functions.
-def sigmoid(z):
-    s = 1.0/(1.0 + np.exp(-z))
+def sigmoid(z, w):
+    temp = np.dot(w, z)
+    s = 1.0/(1.0 + np.exp(-temp))
     return s
 
-def propagate(w, b, X, Y):
-    m = X.shape[1]
-    A = sigmoid(np.dot(w.T, X) + b)
-    cost = - np.sum(Y * np.log(A) + (1 - Y) * np.log(1 - A)) / m
-    diffAY = A - Y
-    dw = np.dot(X, diffAY.T) / m
-    db = np.sum(diffAY) / m
-    return dw, db, cost
+def cost(w, x, y):
+    m = x.shape[1]
+    # dot product of weights and X
+    fx = sigmoid(x, w)
+    result = - np.sum(y * np.log(fx) + (1 - y) * np.log(1 - fx)) / m
+    return result
 
-def optimize(w, b, X, Y, num_iterations, learning_rate, print_cost = False):
-    costs = [None] * num_iterations
-    for i in range(num_iterations):
-        dw, db, cost = propagate(w, b, X, Y)
-        w = w - learning_rate * dw
-        b = b - learning_rate * db
-        costs[i] = cost
-        if print_cost and i % 100 == 0:
-            print ("Cost after iteration %i: %f" %(i, cost))
-    return w, b, costs
+def gradient_descent(x, y, w, learning_rate, epochs):
+    m = x.shape[1]
+    j = [cost(w, x, y)]
+    for i in range(0, epochs):
+        fx = sigmoid(x, w)
+        for i in range(0, x.shape[1]):
+            w[i] -= (learning_rate/m) * np.sum((fx - y) * x[i])
+        j.append(cost(w, x, y))
+    return j, w
 
-def predict(w, b, X):
-    return np.where(sigmoid(np.dot(w.T, X) + b) > 0.5, 1.0, 0.0)
+# def predict(x, y, weights, learning_rate, epochs):
+#     j, w = gradient_descent(x, y, weights, learning_rate, epochs)
+#     predictions = np.zeros((1, x.shape[1]))
+#     fx = sigmoid(x, weights)
 
-def model(X_train, Y_train, X_test, Y_test, num_iterations = 2000, learning_rate = 0.5, print_cost = False):
-    w, b = initialize_with_zeros(X_train.shape[0])
-    w, b, costs = optimize(w, b, X_train, Y_train, num_iterations, learning_rate, print_cost)
-    Y_prediction_test = predict(w, b, X_test)
-    Y_prediction_train = predict(w, b, X_train)
-    print("train accuracy: {}%".format(100 - np.mean(np.abs(Y_prediction_train - Y_train)) * 100))
-    print("test accuracy: {}%".format(100 - np.mean(np.abs(Y_prediction_test - Y_test)) * 100))
-    return Y_prediction_test, costs
+#     print(fx.shape)
+
+#     for i in range(fx.shape[0]):
+#         predictions[i] = fx[i]
+
+#     print(len(fx))
+#     print(len(y))
+#     # accuracy = np.sum([y[i] == fx[i] for i in range(len(y))])/len(y)
+#     return j
 
 def initialize_with_zeros(dim):
-    return  np.zeros([dim, 1]), 0.0
+    w = [0.5]*dim
+    return w
 
 # flatten
 # RGB ----------------------------------------------------------------
@@ -103,7 +105,7 @@ train_gray_m = rescale_gray[:, :split_width]
 # X_test used to make predictions
 test_gray_m = rescale_gray[:, split_width:]
 
-# dependent variables-------------------------------------------------------------- shape = (76, 40, 3)
+# dependent variables-------------------------------------------------------------- shape = (76, 40)
 # y_train colors that need to be predicted by the model
 train_red_m = rescale_red[:, :split_width]
 train_green_m = rescale_green[:, :split_width]
@@ -113,9 +115,30 @@ train_blue_m = rescale_blue[:, :split_width]
 # test_red_m = rescale_red[:, split_width:]
 
 # flattened ------------------------------------------------------------------------
-train_gray = np.reshape(train_gray_m, -1)
-test_gray = np.reshape(test_gray_m, -1)
+train_gray = np.array(train_gray_m)
+test_gray = np.array(test_gray_m)
 
-train_red = np.reshape(train_red_m, -1)
-train_green = np.reshape(train_green_m, -1)
-train_blue = np.reshape(train_blue_m, -1)
+train_red = np.array(train_red_m)
+train_green = np.array(train_green_m)
+train_blue = np.array(train_blue_m)
+print("gray shape ", train_gray.shape[1])
+print("red shape ", train_red.shape[1])
+weights = initialize_with_zeros(train_gray.shape[0])
+pp, w1 = gradient_descent(train_gray, train_red, weights, 0.005, 2000)
+pp, w2 = gradient_descent(train_gray, train_green, weights, 0.005, 2000)
+pp, w3 = gradient_descent(train_gray, train_blue, weights, 0.005, 2000)
+
+results_red = []
+results_green = []
+results_blue = []
+
+for i in range(test_gray.shape[0]):
+    results_red.append(sigmoid(test_gray, w1))
+    results_green.append(sigmoid(test_gray, w2))
+    results_blue.append(sigmoid(test_gray, w3))
+
+# results_red = np.array(results_red * 255.0/results_red.max())
+# results_green = np.array(results_green * 255.0/results_green.max())
+# results_blue = np.array(results_blue * 255.0/results_blue.max())
+
+# print(results_red)

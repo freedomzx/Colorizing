@@ -212,7 +212,7 @@ def get_six_patches(data, width, height, test_patch, recolored_data):
             # check if two patches are similar (within a certain distance)
             distance_between = euclidean_distance(test_patch, curr_patch)
             # print("distance: ", distance_between)
-            if distance_between <= 70:
+            if distance_between <= 75:
                 similar_patches.append(curr_patch)
                 count += 1
 
